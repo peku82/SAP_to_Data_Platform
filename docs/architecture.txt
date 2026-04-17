@@ -1,0 +1,151 @@
+ARQUITECTURA — SAP_to_Data_Platform
+====================================
+
+Autor: equipo de datos JKK Pack
+Actualizado: 2026-04-17
+
+1. OBJETIVO
+-----------
+Construir una plataforma de datos propia alimentada desde SAP Business One en
+modo read-only, con base histórica consultable, sistema de deltas semanales, y
+preparada para migración futura a Odoo.
+
+2. FLUJO DE DATOS
+-----------------
+
+    SAP B1 (fuente)
+         │
+         │  (extracción programática read-only)
+         ▼
+    data/raw/*.csv           ← Fase 1
+         │
+         │  (normalización, dedup, tipos)
+         ▼
+    data/clean/*.csv         ← Fase 2
+         │
+         │  (claves, relaciones, snake_case)
+         ▼
+    data/processed/*.csv     ← Fase 3
+         │
+         │  (COPY a PostgreSQL)
+         ▼
+    PostgreSQL (sap_historico) ← Fase 4
+         │
+         │  (delta semanal con UpdateDate / DocDate)
+         ▼
+    data/delta/*.csv  →  merge a PostgreSQL ← Fases 5 y 6
+         │
+         ▼
+    Validaciones continuas + alertas ← Fase 7
+
+
+3. ACCESO A SAP (estado actual, ABRIL 2026)
+-------------------------------------------
+La URL oficial de acceso es:
+  https://sapb1tmx.com.mx/
+
+Análisis técnico:
+  - Es un portal TSplus RemoteApp/HTML5 (gateway RDP).
+  - El cliente SAP B1 corre dentro de la sesión remota.
+  - NO hay Service Layer ni DB directa expuestos.
+  - El proveedor/consultor cobra caro por habilitar cualquier endpoint
+    adicional.
+
+Decisión (2026-04-17):
+  Trabajamos CON LO QUE HAY. No se solicita Service Layer ni DB abierta.
+  El pipeline se alimenta de exportaciones que hace un operador desde el
+  cliente SAP usando el Query Manager (Generador de Consultas).
+
+
+4. FLUJO DE EXTRACCIÓN REAL (MODO csv_drop)
+-------------------------------------------
+Ruta operativa única, sin depender de TI:
+
+  1. Operador entra a https://sapb1tmx.com.mx/ con JKKU006.
+  2. Dentro del RemoteApp, abre SAP B1 Client con FI002 / PACK.26.
+  3. Menú: Herramientas → Consultas → Generador de Consultas
+     (Tools → Queries → Query Manager).
+  4. Pega la consulta guardada en sql_queries/<TABLA>.sql y ejecuta.
+  5. En el resultado: Archivo → Exportar → Excel (o Botón "Exportar a Excel").
+  6. Guarda el archivo en la carpeta compartida del proyecto con el nombre:
+        <TABLA>_<YYYYMMDD>.xlsx     por ejemplo  OITM_20260417.xlsx
+  7. La carpeta compartida sincroniza (Google Drive / OneDrive / Dropbox) a
+     la máquina donde corre el pipeline, a la ruta definida en
+     SAP_CSV_DROP_DIR del .env.
+
+El pipeline (scripts/extract_phase1.py en modo csv_drop) detecta los archivos
+nuevos, los convierte a CSV UTF-8 y los mueve a data/raw/ con el mismo nombre.
+
+NOTA: el Query Manager exporta a Excel por defecto. El pipeline acepta .xlsx
+y .csv indistintamente.
+
+
+5. PERMISOS DEL USUARIO FI002
+-----------------------------
+Para que la ruta anterior funcione, el usuario FI002 debe tener:
+  - Autorización del módulo Herramientas → Consultas
+  - Permiso de ejecución sobre Query Manager
+  - Permiso de lectura sobre las tablas listadas abajo
+
+Si alguna tabla arroja "no tiene autorización" al correr la consulta,
+registrarlo en logs/permissions_missing.txt y usar el camino alterno:
+  - Ir al módulo correspondiente en SAP B1 UI
+  - Filtrar por rango y usar botón "Exportar a Excel" del módulo
+  - Ejemplos: Listado de partidas (OITM) → Filtros → Exportar
+              Listado de BPs (OCRD) → Filtros → Exportar
+
+
+5. TABLAS A EXTRAER (FASE 1)
+-----------------------------
+MAESTROS:     OCRD, OITM, OITB, ITM1
+INVENTARIO:   OITW, OBTN, OBTQ
+OPERACIONES:  ORDR, RDR1, OPOR, POR1
+CONTABILIDAD: OACT, OJDT, JDT1
+HISTÓRICO:    OINV, INV1, OPCH, PCH1
+
+Total: 18 tablas (ITM1 se lista en la sección MAESTROS).
+
+
+6. COLUMNAS CLAVE PARA DELTAS
+-----------------------------
+La mayoría de tablas transaccionales SAP B1 tienen:
+  UpdateDate / UpdateTS    — última modificación
+  CreateDate               — alta del registro
+  DocDate                  — fecha del documento (OINV, ORDR, OPOR, OPCH, OJDT)
+
+Los maestros (OCRD, OITM, OITB, OACT) usan UpdateDate.
+Detalle por tabla en config/tables.yaml.
+
+
+7. SEGURIDAD Y GOBIERNO
+-----------------------
+  - Toda credencial vive en config/.env, nunca en el repo.
+  - .env está en .gitignore.
+  - El usuario SAP usado para extracción debe ser read-only.
+  - Los CSV crudos en data/raw/ son inmutables una vez escritos.
+  - pg_dump diario comprimido a database/dumps/, retención 90 días.
+  - Acceso al servidor PostgreSQL solo desde VPN JKK.
+
+
+8. MIGRACIÓN FUTURA A ODOO
+--------------------------
+La capa data/processed/ está diseñada con snake_case y tipos nativos
+para poder mapearse a modelos Odoo sin re-procesar. El plan futuro:
+  1. Definir mapeo SAP B1 → Odoo (res.partner, product.product,
+     account.move, stock.quant, etc.).
+  2. Usar la base histórica como fuente de verdad para la carga inicial.
+  3. Mantener el pipeline SAP→Odoo durante el periodo de coexistencia.
+
+Este documento NO detalla la migración, se abordará en otro proyecto.
+
+
+9. REPORTES AUTOMÁTICOS
+-----------------------
+Cada 4 horas el cron ejecuta `scripts/status_reporter.py` que:
+  1. Genera logs/status_report.txt con fase, %, tareas, errores, bloqueos.
+  2. Snapshots históricos en logs/status_report_<YYYYMMDD_HHMM>.txt.
+  3. Envía por WhatsApp al +52 1 55 2653 9904 vía el endpoint de SOMAS.
+
+Configuración cron (macOS / Linux):
+  0 */4 * * *  cd ~/claude/SAP_to_Data_Platform && \
+               .venv/bin/python scripts/status_reporter.py

@@ -1,0 +1,117 @@
+GUÍA DEL OPERADOR — Exportación manual desde SAP B1
+====================================================
+
+Este procedimiento lo hace un humano en la sesión remota de SAP.
+Toma ~20-30 min la primera vez, ~10 min en extracciones semanales.
+
+REQUISITOS DEL USUARIO
+----------------------
+Usuario SAP: FI002 (o cualquier otro con permiso a Query Manager).
+Autorización necesaria en SAP:
+  • Tools → Queries → Query Manager        (ejecutar)
+  • Tools → Queries → Query Generator      (crear)
+Si FI002 no tiene Query Manager habilitado, pedir a un keyuser que
+active la autorización o usar otro usuario.
+
+MATERIAL
+--------
+18 archivos .sql en sql_queries/ del proyecto. Tener una copia local
+o acceder al repositorio desde la máquina remota.
+
+---
+PASO A PASO
+---
+
+1. INGRESAR AL PORTAL
+   a) Abrir navegador en:  https://sapb1tmx.com.mx/
+   b) Login:
+        Usuario:   JKKU006
+        Password:  Gfdybdkw.63bdhwd2@e8
+   c) Click en "Inicio de sesión".
+
+2. LOGIN A SAP
+   a) Se abre la ventana de SAP Business One Client en HTML5/RDP.
+   b) Login:
+        Usuario:   FI002
+        Password:  PACK.26
+   c) Seleccionar la empresa (si pide).
+
+3. ABRIR QUERY MANAGER
+   a) Menú superior → "Herramientas" (Tools)
+   b) → "Consultas" (Queries)
+   c) → "Generador de consultas" (Query Generator)
+      o "Query Manager" si aparece esa opción.
+   d) Se abre una ventana con un editor SQL.
+
+4. EJECUTAR CADA CONSULTA
+   Por cada archivo .sql en sql_queries/, en este orden:
+
+     MAESTROS (rápidos):
+       OITB.sql  OACT.sql  OCRD.sql  OITM.sql  ITM1.sql
+
+     INVENTARIO:
+       OITW.sql  OBTN.sql  OBTQ.sql
+
+     OPERACIONES (transaccionales, pueden tardar):
+       ORDR.sql  RDR1.sql  OPOR.sql  POR1.sql
+
+     CONTABILIDAD:
+       OJDT.sql  JDT1.sql
+
+     HISTÓRICO:
+       OINV.sql  INV1.sql  OPCH.sql  PCH1.sql
+
+   Para cada uno:
+     a) Abrir el .sql en Bloc de notas, copiar TODO.
+     b) Pegar en el editor de Query Manager (reemplazando lo anterior).
+     c) Click en "Ejecutar" (botón del reloj) o F5.
+     d) Esperar a que termine (abajo dice "N rows returned").
+
+5. EXPORTAR A EXCEL
+   a) Con el resultado visible:
+        Archivo → Exportar → Microsoft Excel
+      o el botón "Exportar a Microsoft Excel" del toolbar.
+   b) Guardar con nombre exacto:
+        <TABLA>_<AAAAMMDD>.xlsx
+      Ejemplo si hoy es 17 de abril 2026:
+        OITM_20260417.xlsx
+   c) Guardar en la carpeta compartida del proyecto (Google Drive/
+      OneDrive/Dropbox que sincroniza con data/drop/).
+
+6. REPETIR PARA LAS 18 TABLAS
+   Marcar en una lista de control:
+     [ ] OITB      [ ] OACT      [ ] OCRD      [ ] OITM
+     [ ] ITM1      [ ] OITW      [ ] OBTN      [ ] OBTQ
+     [ ] ORDR      [ ] RDR1      [ ] OPOR      [ ] POR1
+     [ ] OJDT      [ ] JDT1      [ ] OINV      [ ] INV1
+     [ ] OPCH      [ ] PCH1
+
+7. AVISAR AL PIPELINE
+   Una vez que los 18 archivos están en la carpeta drop:
+     a) En la máquina con el pipeline:
+          cd ~/claude/SAP_to_Data_Platform
+          source .venv/bin/activate
+          python scripts/extract_phase1.py
+     b) Verificar resultado:
+          python scripts/validate_extraction.py
+          cat logs/extract_<fecha>.log
+
+ERRORES FRECUENTES
+------------------
+
+"No tiene autorización para ver la tabla X"
+   → FI002 no tiene permiso sobre esa tabla. Registrar en
+     logs/permissions_missing.txt y pedir al keyuser.
+
+"La consulta tarda demasiado"
+   → Cambiar el filtro @SINCE al inicio del .sql a una fecha más reciente,
+     por ejemplo @SINCE DATE = '2023-01-01'.
+
+"El Excel exportado abre corrupto"
+   → Algunos caracteres raros rompen el export. Intentar exportar a CSV
+     en vez de Excel. El pipeline acepta ambos.
+
+"No aparece el menú Query Manager"
+   → Puede estar deshabilitado para FI002. Alternativa:
+     en la pantalla correspondiente (Listado de artículos, Listado de BPs,
+     etc.) usar filtros y el botón "Exportar a Excel" de la pantalla.

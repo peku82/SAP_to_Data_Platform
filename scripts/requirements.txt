@@ -1,0 +1,9 @@
+python-dotenv>=1.0.0
+PyYAML>=6.0
+requests>=2.31.0
+urllib3>=2.0.0
+openpyxl>=3.1.2           # Leer .xlsx exportados desde SAP Query Manager
+# Opcionales según modo:
+# hdbcli>=2.19.21          # HANA (si algún día se expone)
+# pyodbc>=5.0.1            # MSSQL (si algún día se expone)
+# psycopg[binary]>=3.1.18  # PostgreSQL (Fase 4)

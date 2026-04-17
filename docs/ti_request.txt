@@ -1,0 +1,87 @@
+SOLICITUD A TI — Habilitar permisos de consultas a usuario FI002
+=================================================================
+
+Fecha:    2026-04-17
+Contacto: Jose Kuri — JKK Pack
+Empresa:  JKK PACK (SAP Business One — hosting sapb1tmx.com.mx)
+
+1. PROBLEMA VERIFICADO
+----------------------
+Al intentar abrir el "Generador de Consultas" con el usuario FI002
+(SAP B1 Client vía portal TSplus https://sapb1tmx.com.mx/), el sistema
+responde:
+
+    Título:  "Menosprecio de la autorización"
+    Mensaje: "No tiene autorización para realizar esta operación"
+             "Consultas nuevas"
+
+Esto impide ejecutar SQL read-only para extraer las tablas base.
+
+2. LO QUE NECESITAMOS
+---------------------
+Habilitar al usuario SAP **FI002** las siguientes autorizaciones de
+SOLO LECTURA (nunca escritura, nunca SQL de modificación):
+
+Ruta en SAP B1:
+  Administración
+  → Sistema de inicialización
+  → Autorizaciones
+  → Autorizaciones generales
+
+Categoría "Herramientas → Consultas":
+  ✅  Consultas nuevas                → Autorización COMPLETA
+  ✅  Generador de consultas          → Autorización COMPLETA
+  ✅  Administrador de consultas      → Autorización COMPLETA
+  ✅  Asistente de consulta           → Autorización COMPLETA
+  ✅  Consultas sistema               → Autorización COMPLETA (lectura)
+  ✅  Consultas usuario               → Autorización COMPLETA (lectura)
+
+NOTA IMPORTANTE: el "Generador de Consultas" de SAP B1 está limitado
+a **SELECT** por diseño — no permite INSERT / UPDATE / DELETE / DROP.
+Es read-only por la arquitectura del producto. Por eso esta
+autorización NO expone ningún riesgo de escritura.
+
+Referencia SAP oficial:
+  "The Query Generator is a SAP Business One tool that allows users
+   to create their own queries. It is limited to SELECT statements only."
+
+3. TABLAS QUE VAMOS A LEER (todas estándar SAP B1)
+--------------------------------------------------
+Maestros:     OCRD, OITM, OITB, ITM1
+Inventario:   OITW, OBTN, OBTQ
+Operaciones:  ORDR, RDR1, OPOR, POR1
+Contabilidad: OACT, OJDT, JDT1
+Histórico:    OINV, INV1, OPCH, PCH1
+
+No se tocan tablas de configuración, autorizaciones, usuarios,
+passwords ni logs de auditoría.
+
+4. QUÉ HAREMOS CON LOS DATOS
+----------------------------
+Exportamos a Excel/CSV para construir una base histórica propia
+en PostgreSQL fuera de SAP. La base sirve para:
+  - análisis de costos
+  - reportería gerencial
+  - preparación de futura migración a Odoo
+
+Nada sale del entorno interno de JKK. No se comparte con terceros.
+
+5. TIEMPO ESTIMADO DEL CAMBIO PARA TI
+--------------------------------------
+2-3 minutos en el módulo de Autorizaciones Generales.
+
+6. CUANDO ESTÉ LISTO
+--------------------
+Avisar a Jose Kuri. Volvemos a entrar con FI002 y extraemos las
+18 tablas sin más tocar nada.
+
+---
+Texto sugerido para pegar al correo/chat de TI:
+
+  Hola, necesito que habiliten al usuario FI002 en SAP B1 la
+  autorización "Herramientas → Consultas → Consultas nuevas" y
+  "Generador de consultas" (ambas en modo Completo). Es solo para
+  poder correr SELECT read-only — el Query Generator de SAP B1 no
+  permite escribir por diseño. Ruta: Administración → Sistema de
+  inicialización → Autorizaciones → Autorizaciones generales.
+  Gracias.

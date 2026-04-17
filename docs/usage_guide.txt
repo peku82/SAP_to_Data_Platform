@@ -1,0 +1,148 @@
+GUÍA DE USO — SAP_to_Data_Platform
+====================================
+
+Este documento describe cómo operar el pipeline, fase por fase.
+
+-----------------------------------------------------------------
+INSTALACIÓN INICIAL (se hace UNA VEZ)
+-----------------------------------------------------------------
+
+1. Requisitos:
+   - macOS / Linux
+   - Python 3.10+
+   - PostgreSQL 14+ (solo a partir de Fase 4)
+   - Acceso a SAP B1 vía Service Layer o DB directa (ver architecture.txt)
+
+2. Crear entorno:
+
+   cd ~/claude/SAP_to_Data_Platform
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r scripts/requirements.txt
+
+3. Configurar credenciales:
+
+   cp config/.env.example config/.env
+   # Editar con valores reales:
+   nano config/.env
+
+4. Probar conexión:
+
+   python scripts/sap_connection.py --test
+
+   Si la conexión responde con el número de filas de OITM, todo OK.
+
+-----------------------------------------------------------------
+FASE 1 — EXTRACCIÓN INICIAL
+-----------------------------------------------------------------
+
+Objetivo: traer las 18 tablas a data/raw/ como CSV UTF-8.
+
+   python scripts/extract_phase1.py
+
+Opciones:
+   --tables OCRD,OITM       Solo las tablas indicadas
+   --since 2020-01-01       Solo registros con DocDate/UpdateDate desde
+                            esa fecha (acelera primera carga)
+   --dry-run                No escribe CSV, solo cuenta filas
+   --verbose                Log detallado
+
+Validación:
+
+   python scripts/validate_extraction.py
+
+Imprime una tabla con:
+   - nombre de tabla
+   - filas en SAP
+   - filas en CSV
+   - diferencia (debe ser 0)
+   - columnas perdidas / añadidas
+   - primeras filas problemáticas
+
+Criterio para avanzar a Fase 2: diferencia 0 en todas las tablas o
+justificación escrita en logs/.
+
+-----------------------------------------------------------------
+FASE 2 — LIMPIEZA   (pendiente de implementación)
+-----------------------------------------------------------------
+   python scripts/clean_phase2.py
+Input:  data/raw/*.csv
+Output: data/clean/*.csv + data/clean/<tabla>_quality.json
+
+-----------------------------------------------------------------
+FASE 3 — ESTRUCTURACIÓN   (pendiente)
+-----------------------------------------------------------------
+   python scripts/structure_phase3.py
+Input:  data/clean/*.csv
+Output: data/processed/*.csv con snake_case y FK validadas
+
+-----------------------------------------------------------------
+FASE 4 — BASE HISTÓRICA POSTGRES   (pendiente)
+-----------------------------------------------------------------
+   bash database/init_db.sh              # crea DB e índices
+   python scripts/load_db_phase4.py      # COPY masivo
+
+-----------------------------------------------------------------
+FASE 5 — DELTA   (pendiente)
+-----------------------------------------------------------------
+   python scripts/delta_phase5.py
+Usa logs/watermarks.json para saber desde cuándo consultar cada tabla.
+
+-----------------------------------------------------------------
+FASE 6 — SEMANAL AUTOMÁTICO   (pendiente)
+-----------------------------------------------------------------
+   bash scripts/weekly_phase6.sh
+Orquesta: delta → load → validación → reporte.
+
+Cron recomendado (domingo 23:00):
+   0 23 * * 0  cd ~/claude/SAP_to_Data_Platform && \
+               bash scripts/weekly_phase6.sh
+
+-----------------------------------------------------------------
+FASE 7 — VALIDACIÓN CONTINUA   (pendiente)
+-----------------------------------------------------------------
+   python scripts/validate_phase7.py
+Checks:
+   - suma de inventario por almacén vs. kardex
+   - total facturación = suma detalle
+   - debe = haber en pólizas
+   - sin huecos de DocEntry
+Alerta por WhatsApp si algún check falla.
+
+-----------------------------------------------------------------
+REPORTE DE ESTADO (cada 4h)
+-----------------------------------------------------------------
+   python scripts/status_reporter.py
+
+Genera logs/status_report.txt y envía por WhatsApp.
+Se programa con cron:
+   0 */4 * * *  cd ~/claude/SAP_to_Data_Platform && \
+                .venv/bin/python scripts/status_reporter.py
+
+-----------------------------------------------------------------
+TROUBLESHOOTING
+-----------------------------------------------------------------
+
+"Service Layer no responde":
+   - Validar URL y puerto en config/.env (SAP_SL_URL, SAP_SL_PORT).
+   - Probar con curl:
+       curl -k -X POST '<SAP_SL_URL>/Login' \
+            -d '{"CompanyDB":"...","UserName":"...","Password":"..."}'
+   - Verificar que nuestra IP esté en la whitelist del firewall de TI.
+
+"hdbcli no conecta":
+   - Instalar: pip install hdbcli
+   - Verificar puerto 30015 abierto y schema correcto.
+   - Revisar logs/errors.log.
+
+"WhatsApp no llega":
+   - Revisar que SOMAS esté arriba: https://somas.jkkpack.app
+   - Probar endpoint:
+       curl -X POST https://somas.jkkpack.app/api/whatsapp/send \
+            -H 'Content-Type: application/json' \
+            -d '{"secret":"...","phone":"5215526539904","message":"test"}'
+   - El número +52 1 55 2653 9904 debe existir como destinatario permitido.
+
+"CSV con caracteres raros":
+   - Encoding forzado a UTF-8 con BOM. Si abres en Excel y ves basura,
+     abrir con "Datos → Desde texto/CSV → UTF-8".

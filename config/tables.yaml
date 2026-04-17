@@ -1,0 +1,109 @@
+# Tablas a extraer en Fase 1.
+# Cada entrada define:
+#   group:        agrupación lógica (MAESTROS / INVENTARIO / ...)
+#   pk:           clave primaria (string o lista)
+#   delta_cols:   columnas que se usan para detectar cambios en Fase 5.
+#                 Orden de preferencia: la primera que exista gana.
+#   since_col:    columna de fecha para filtrar primera carga (EXTRACT_SINCE)
+#                 null = traer todo sin filtro de fecha.
+#   sl_name:      nombre del entity set en Service Layer (si difiere).
+
+MAESTROS:
+  OCRD:
+    pk: CardCode
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: BusinessPartners
+  OITM:
+    pk: ItemCode
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: Items
+  OITB:
+    pk: ItmsGrpCod
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: ItemGroups
+  ITM1:
+    pk: [ItemCode, PriceList]
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: Items_PriceList   # relación, en SL se lee vía Items
+
+INVENTARIO:
+  OITW:
+    pk: [ItemCode, WhsCode]
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: ItemWarehouseInfoCollection
+  OBTN:
+    pk: [ItemCode, SysNumber]
+    delta_cols: [UpdateDate, CreateDate]
+    since_col: null
+    sl_name: BatchNumberDetails
+  OBTQ:
+    pk: [ItemCode, SysNumber, WhsCode]
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: BatchNumberDetails_Lines
+
+OPERACIONES:
+  ORDR:
+    pk: DocEntry
+    delta_cols: [UpdateDate, DocDate]
+    since_col: DocDate
+    sl_name: Orders
+  RDR1:
+    pk: [DocEntry, LineNum]
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: Orders_Lines
+  OPOR:
+    pk: DocEntry
+    delta_cols: [UpdateDate, DocDate]
+    since_col: DocDate
+    sl_name: PurchaseOrders
+  POR1:
+    pk: [DocEntry, LineNum]
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: PurchaseOrders_Lines
+
+CONTABILIDAD:
+  OACT:
+    pk: AcctCode
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: ChartOfAccounts
+  OJDT:
+    pk: TransId
+    delta_cols: [UpdateDate, RefDate]
+    since_col: RefDate
+    sl_name: JournalEntries
+  JDT1:
+    pk: [TransId, Line_ID]
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: JournalEntries_Lines
+
+HISTORICO:
+  OINV:
+    pk: DocEntry
+    delta_cols: [UpdateDate, DocDate]
+    since_col: DocDate
+    sl_name: Invoices
+  INV1:
+    pk: [DocEntry, LineNum]
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: Invoices_Lines
+  OPCH:
+    pk: DocEntry
+    delta_cols: [UpdateDate, DocDate]
+    since_col: DocDate
+    sl_name: PurchaseInvoices
+  PCH1:
+    pk: [DocEntry, LineNum]
+    delta_cols: [UpdateDate]
+    since_col: null
+    sl_name: PurchaseInvoices_Lines

@@ -1,0 +1,36 @@
+# Credenciales
+config/.env
+
+# Entorno Python
+.venv/
+__pycache__/
+*.pyc
+
+# Datos (pesados y sensibles — no versionar)
+data/raw/*.csv
+data/clean/*.csv
+data/processed/*.csv
+data/delta/*.csv
+data/drop/*.xlsx
+data/drop/*.xls
+data/drop/*.csv
+database/dumps/
+
+# Logs
+logs/*.log
+logs/status_report*.txt
+logs/extract_*.json
+logs/validate_*.json
+logs/errors.log
+logs/watermarks.json
+
+# Sistema
+.DS_Store
+
+# Archivos adicionales
+logs/victor_authorized.flag
+logs/group_poller_watermark.json
+logs/group_last_messages.json
+logs/launchd_*
+*.xlsx
+*.xls
