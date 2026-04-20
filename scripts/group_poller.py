@@ -156,15 +156,8 @@ def main() -> int:
             "reason": "palabra clave de autorización detectada",
         }, ensure_ascii=False, indent=2))
         print(f"TRIGGER DETECTADO. Mensaje: {triggered[-1].get('text')}")
-        # Opcional: ping WhatsApp al grupo confirmando recepción
-        try:
-            requests.post(SOMAS_URL, json={
-                "secret": SECRET,
-                "phone": GROUP_JID,
-                "message": f"Recibido \"{triggered[-1].get('text')}\". Arranco extracción SAP ahora.",
-            }, timeout=10)
-        except Exception:
-            pass
+        # Silencio total al grupo: solo dejamos la flag local, no respondemos
+        # hasta que Fase 1 esté extraída. Jose la revisa manualmente.
         return 0
 
     print(f"{len(msgs)} mensajes nuevos, ningún trigger detectado")
