@@ -166,7 +166,7 @@ def _send_whatsapp(message: str, logger=print) -> bool:
     url = os.environ.get("SOMAS_WHATSAPP_URL",
                          "https://somas.jkkpack.app/api/whatsapp/send")
     secret = os.environ.get("SOMAS_INTER_APP_SECRET",
-                            "jkkpack-inter-app-2026")
+                            "soma-academy-secret-2024")
     phone = os.environ.get("REPORT_WHATSAPP_NUMBER", "5215526539904")
     try:
         r = requests.post(url, json={
