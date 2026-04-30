@@ -21,6 +21,10 @@ logs/*.log
 logs/status_report*.txt
 logs/extract_*.json
 logs/validate_*.json
+logs/clean_*.json
+logs/structure_*.json
+logs/load_*.json
+logs/quality/
 logs/errors.log
 logs/watermarks.json
 

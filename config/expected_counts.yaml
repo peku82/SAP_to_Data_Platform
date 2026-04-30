@@ -1,0 +1,26 @@
+# Conteos confirmados por SAP en la extraccion del 2026-04-29.
+# Fuente: PHASE1_COMPLETE.md (Victor reporto los conteos del lado SAP B1
+# y el delta vs CSVs fue 0 en las 18 tablas).
+# Para cargas delta, actualizar estos valores con los conteos nuevos del
+# snapshot que mande Victor o que genere el pipeline auto en Fase 5.
+#
+# Tabla -> filas en SAP el dia del snapshot.
+
+OBTQ: 1048575
+OBTN: 601095
+JDT1: 338039
+OJDT: 267455
+OITW: 195279
+ITM1: 114850
+OITM: 11487
+OCRD: 1077
+OINV: 11853
+INV1: 13925
+OPCH: 14166
+PCH1: 24671
+ORDR: 5341
+RDR1: 8693
+OPOR: 5971
+POR1: 11936
+OACT: 640
+OITB: 42
